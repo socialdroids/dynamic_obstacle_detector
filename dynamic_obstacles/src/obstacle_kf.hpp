@@ -3,7 +3,7 @@
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 //#include <Eigen/LU>
 
 #define OBSTACLEKF_POS_VAR 0.1
@@ -20,7 +20,7 @@ struct ObstacleKF
 	std::string name;
 	
 	// Last time update
-	ros::Time tStamp;
+	rclcpp::Time tStamp;
 	
 	// Updated flag
 	bool updated;
@@ -34,7 +34,7 @@ struct ObstacleKF
 		x.setZero(4, 1);
 		P.setIdentity(4, 4);
 		id = -1;
-		tStamp = ros::Time::now();
+		tStamp = rclcpp::Clock().now();
 		updated = false;
 		name = "";
 		//seen = 0;
@@ -88,7 +88,7 @@ struct ObstacleKF
 		P(3,3) = 1.0*1.0;
 		
 		// Update time stamp
-		tStamp = ros::Time::now();
+		tStamp = rclcpp::Clock().now();
 		updated = false;
 		name = _name;
 	}
@@ -115,7 +115,7 @@ struct ObstacleKF
 	}
 	
 	// State update
-	void update(double _x, double _y,  double _posVar = OBSTACLEKF_POS_VAR, ros::Time _t = ros::Time::now())
+	void update(double _x, double _y,  double _posVar = OBSTACLEKF_POS_VAR, rclcpp::Time _t = rclcpp::Clock().now())
 	{
 		// Update time stamp
 		tStamp = _t;
@@ -161,7 +161,7 @@ struct ObstacleKF
 	}
 	
 	// State update
-	void update(double _x1, double _y1,  double _posVar1, double _x2, double _y2,  double _posVar2, ros::Time _t = ros::Time::now())
+	void update(double _x1, double _y1,  double _posVar1, double _x2, double _y2,  double _posVar2, rclcpp::Time _t = rclcpp::Clock().now())
 	{
 		// Update time stamp
 		tStamp = _t;
@@ -213,7 +213,7 @@ struct ObstacleKF
 	// State update
 	void update(double _x1, double _y1,  double _posVar1, 
 	            double _x2, double _y2,  double _posVar2, 
-	            double _x3, double _y3,  double _posVar3, ros::Time _t = ros::Time::now())
+	            double _x3, double _y3,  double _posVar3, rclcpp::Time _t = rclcpp::Clock().now())
 	{
 		// Update time stamp
 		tStamp = _t;

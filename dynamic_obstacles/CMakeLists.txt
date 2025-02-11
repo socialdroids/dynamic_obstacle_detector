@@ -1,45 +1,53 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(dynamic_obstacle_detector)
 
-
-find_package(catkin REQUIRED COMPONENTS
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(laser_geometry REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(dynamic_msgs REQUIRED)  
+find_package(visualization_msgs REQUIRED)
+ament_export_dependencies(
+  rclcpp
   geometry_msgs
   laser_geometry
-  roscpp
   sensor_msgs
   tf2_ros
-  message_generation
-)
-
-
- add_message_files(
-   FILES
-   DynamicObstacle.msg
-   DynamicObstacleStamped.msg
-   DynamicObstacles.msg
- )
-
- generate_messages(
-   DEPENDENCIES
-   geometry_msgs std_msgs
-)
-
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES dynamic_obstacle_detector
-  CATKIN_DEPENDS geometry_msgs laser_geometry roscpp sensor_msgs tf2_ros message_runtime
-#  DEPENDS system_lib
+  tf2_geometry_msgs
+  tf2
+  dynamic_msgs  
+  visualization_msgs
 )
 
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+  ${rclcpp_INCLUDE_DIRS}
+  ${geometry_msgs_INCLUDE_DIRS}
+  ${laser_geometry_INCLUDE_DIRS}
+  ${sensor_msgs_INCLUDE_DIRS}
+  ${tf2_ros_INCLUDE_DIRS}
 )
 
- add_executable(${PROJECT_NAME}_node src/dynamic_obstacle_detector.cpp)
+add_executable(${PROJECT_NAME}_node src/dynamic_obstacle_detector.cpp)
 
- add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+ament_target_dependencies(${PROJECT_NAME}_node
+  rclcpp
+  geometry_msgs
+  laser_geometry
+  sensor_msgs
+  tf2_ros
+  tf2_geometry_msgs
+  tf2
+  dynamic_msgs 
+  visualization_msgs
+)
 
- target_link_libraries(${PROJECT_NAME}_node
-   ${catkin_LIBRARIES}
- )
+install(TARGETS
+  ${PROJECT_NAME}_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+ament_package()
