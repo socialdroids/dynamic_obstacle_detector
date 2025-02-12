@@ -70,6 +70,8 @@
         "typeinfo": "cpp",
         "__nullptr": "cpp",
         "__split_buffer": "cpp",
-        "__node_handle": "cpp"
+        "__node_handle": "cpp",
+        "locale": "cpp",
+        "__locale": "cpp"
     }
 }

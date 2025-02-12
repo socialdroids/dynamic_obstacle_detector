@@ -9,7 +9,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(dynamic_msgs REQUIRED)  
+find_package(people_msgs REQUIRED)  
 find_package(visualization_msgs REQUIRED)
 ament_export_dependencies(
   rclcpp
@@ -19,7 +19,7 @@ ament_export_dependencies(
   tf2_ros
   tf2_geometry_msgs
   tf2
-  dynamic_msgs  
+  people_msgs  
   visualization_msgs
 )
 
@@ -41,7 +41,7 @@ ament_target_dependencies(${PROJECT_NAME}_node
   tf2_ros
   tf2_geometry_msgs
   tf2
-  dynamic_msgs 
+  people_msgs 
   visualization_msgs
 )
 

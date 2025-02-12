@@ -12,7 +12,8 @@
 #include <tf2_ros/transform_listener.h>
 
 #include "visualization_msgs/msg/marker_array.hpp"
-#include <dynamic_msgs/msg/dynamic_obstacles.hpp>
+#include <people_msgs/msg/people.hpp>
+#include <people_msgs/msg/person.hpp>
 #include "obstacle_kf.hpp"
 
 #include <cmath>  // isinf, sqrt
@@ -53,7 +54,7 @@ public:
         obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/static_markers", 10);
         dyn_obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/dynamic_markers", 10);
         // points_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/dynamic_obstacles/points", 10);
-        obstacles_pub_ = this->create_publisher<dynamic_msgs::msg::DynamicObstacles>("/dynamic_obstacles", 10);
+        obstacles_pub_ = this->create_publisher<people_msgs::msg::People>("/people", 10);
 
         obstacle_count_ = 0;
         buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
@@ -116,7 +117,7 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obs_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr dyn_obs_pub_;
     // rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr points_pub_;
-    rclcpp::Publisher<dynamic_msgs::msg::DynamicObstacles>::SharedPtr obstacles_pub_;
+    rclcpp::Publisher<people_msgs::msg::People>::SharedPtr obstacles_pub_;
 
     void scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg){ 
       std::vector<Point> points;
@@ -256,8 +257,8 @@ private:
     }
     void publishDynamicObstacles() {
 
-      dynamic_msgs::msg::DynamicObstacles dyn_obs;
-      dynamic_msgs::msg::DynamicObstacle ob;
+      people_msgs::msg::People dyn_obs;
+      people_msgs::msg::Person ob;
   
       visualization_msgs::msg::MarkerArray obsMarkers;
       visualization_msgs::msg::Marker marker;
@@ -297,7 +298,7 @@ private:
             ob.velocity.x = vx;
             ob.velocity.y = vy;
             ob.reliability = 0.8;
-            dyn_obs.obstacles.push_back(ob);
+            dyn_obs.people.push_back(ob);
   
             // Cylinder
             marker.id = 20 * tracked_obstacles_[i].id;
