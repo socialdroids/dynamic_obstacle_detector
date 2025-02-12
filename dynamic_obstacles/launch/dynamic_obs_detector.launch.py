@@ -1,8 +1,8 @@
 import launch
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, LogInfo, PushRosNamespace
+from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import LaunchConfiguration, FindPackageShare, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 import os
 
@@ -60,12 +60,12 @@ def generate_launch_description():
         # Lançamento do nó do dynamic_obstacle_detector;
 
         Node(
-            package='dynamic_obstacle_detector',
-            executable='dynamic_obstacle_detector_node',
-            name='dynamic_obstacle_detector',
+            package='dynamic_obstacles',
+            executable='dynamic_obstacles_node',
+            name='dynamic_obstacles',
             output='screen',
             parameters=[
-                {'input_scan_topic': LaunchConfiguration('base_scan_front_filtered')},
+                {'input_scan_topic': 'base_scan_front_filtered'},
                 {'odom_frame': 'odom'},
                 {'cluster_max_distance_points': 0.6},
                 {'cluster_min_points': 3},

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>dynamic_obstacle_detector</name>
+  <name>dynamic_obstacles</name>
   <version>1.0.0</version>
   <description>The dynamic_obstacle_detector package</description>
 
@@ -23,5 +23,6 @@
   <depend>visualization_msgs</depend>     
 
   <export>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>

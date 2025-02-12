@@ -44,15 +44,16 @@ public:
         this->get_parameter("max_vel_tracked", max_vel_tracked_);
         this->get_parameter("track_distance", track_distance_);
         this->get_parameter("track_timeout", track_timeout_);
+
         scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
             input_scan_topic_, rclcpp::SensorDataQoS(),
             std::bind(&DynamicObstacleDetector::scanCallback, this, std::placeholders::_1));
       
 
-        obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("obstacles", 10);
-        dyn_obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("dynamic_obstacles", 10);
-        points_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("points", 10);
-        obstacles_pub_ = this->create_publisher<dynamic_msgs::msg::DynamicObstacles>("obstacles", 10);
+        obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/static_markers", 10);
+        dyn_obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/dynamic_markers", 10);
+        points_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/dynamic_obstacles/points", 10);
+        obstacles_pub_ = this->create_publisher<dynamic_msgs::msg::DynamicObstacles>("/dynamic_obstacles", 10);
 
         obstacle_count_ = 0;
         buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());

@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.5)
-project(dynamic_obstacle_detector)
+cmake_minimum_required(VERSION 3.8)
+project(dynamic_obstacles)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -49,5 +49,7 @@ install(TARGETS
   ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME}
 )
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 ament_package()
