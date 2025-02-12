@@ -67,13 +67,13 @@ def generate_launch_description():
             parameters=[
                 {'input_scan_topic': 'base_scan_front_filtered'},
                 {'odom_frame': 'odom'},
-                {'cluster_max_distance_points': 0.6},
-                {'cluster_min_points': 3},
-                {'cluster_max_points': 40},
+                {'thres_point_dist': 0.6},
+                {'thresh_min_points': 10},
+                {'thresh_max_points': 75},
                 {'min_vel_tracked': 0.37},
                 {'max_vel_tracked': 1.8},
-                {'max_tracked_distance': 0.55},
-                {'max_tracked_sec': 0.8}
+                {'track_distance': 0.55},
+                {'track_timeout': 0.8}
             ]
         ),
 

@@ -52,7 +52,7 @@ public:
 
         obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/static_markers", 10);
         dyn_obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/dynamic_markers", 10);
-        points_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/dynamic_obstacles/points", 10);
+        // points_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/dynamic_obstacles/points", 10);
         obstacles_pub_ = this->create_publisher<dynamic_msgs::msg::DynamicObstacles>("/dynamic_obstacles", 10);
 
         obstacle_count_ = 0;
@@ -115,7 +115,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obs_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr dyn_obs_pub_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr points_pub_;
+    // rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr points_pub_;
     rclcpp::Publisher<dynamic_msgs::msg::DynamicObstacles>::SharedPtr obstacles_pub_;
 
     void scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg){ 
@@ -125,7 +125,7 @@ private:
       geometry_msgs::msg::PointStamped ps;
       ps.header.frame_id = msg->header.frame_id;
       //ros::Time(0); --> msg->time
-      ps.header.stamp = rclcpp::Time(0);
+      ps.header.stamp = msg->header.stamp;
       for (unsigned int i = 0; i < msg->ranges.size(); i++) {
         if (!isinf(msg->ranges[i]) && !isnan(msg->ranges[i])) {
           Point p;
@@ -135,7 +135,7 @@ private:
           ps.point.z = 0.0;
           geometry_msgs::msg::PointStamped psn;
           try {
-            psn = buffer_->transform(ps, ps, odom_frame_);
+            psn = buffer_->transform(ps, odom_frame_);
           } catch (tf2::TransformException &ex) {
            RCLCPP_ERROR(this->get_logger(),"Could NOT transform point to %s: %s", odom_frame_.c_str(),
                      ex.what());
@@ -150,7 +150,7 @@ private:
   
       if (!points.empty()) {
         // Publish the points in RViz
-        publish_points(points);
+        // publish_points(points);
         // Find obstacles candidates in the point set
         std::vector<Obstacle> obs = findObs(points, msg->header.stamp);
         // printf("found %i obstacles!\n", (int)obs.size());
@@ -194,12 +194,17 @@ private:
         // Check if the distant is too high
         if (minDist < track_distance_) {
           // Predict the position of the obstacle to this instant
+          auto now_time = this->get_clock()->now();
+          double now_seconds = now_time.seconds();
+          double tStamp_seconds = tracked_obstacles_[i].tStamp.seconds();
+
+
           tracked_obstacles_[i].predict(
-              (rclcpp::Clock().now() - tracked_obstacles_[i].tStamp).seconds());
+              (now_seconds - tStamp_seconds));
   
           // Update the filter
           tracked_obstacles_[i].update(obs[k].center.x, obs[k].center.y, posDev,
-                                       rclcpp::Clock().now());
+                                       this->get_clock()->now() );
   
           // Mark the detection as used
           used[k] = true;
@@ -227,14 +232,19 @@ private:
   
       // Remove too old estimations without update and static obstacles
       std::vector<ObstacleKF> temp;
+
       for (int i = 0; i < (int)tracked_obstacles_.size(); i++) {
   
         // printf("obstacle %i, linvel: %.3f\n", i, linvel);
-        if ((rclcpp::Clock().now() - tracked_obstacles_[i].tStamp).seconds() <
-            track_timeout_) //&& linvel >= min_vel_tracked_
+        auto now_time = this->get_clock()->now();
+        double now_seconds = now_time.seconds();
+        double tStamp_seconds = tracked_obstacles_[i].tStamp.seconds();
+
+        if (now_seconds - tStamp_seconds < track_timeout_) { //&& linvel >= min_vel_tracked_
           temp.push_back(tracked_obstacles_[i]);
+        }
       }
-  
+
       tracked_obstacles_.clear();
       tracked_obstacles_ = temp;
   
@@ -515,37 +525,37 @@ private:
     obs_pub_->publish(ma);
   }
 
-  void publish_points(const std::vector<Point> &points) {
-    visualization_msgs::msg::Marker m;
-    m.header.frame_id = odom_frame_;
-    m.header.stamp = this->get_clock()->now();
-    m.ns = "dyn_points";
-    m.type = visualization_msgs::msg::Marker::POINTS;
-    m.action = visualization_msgs::msg::Marker::ADD;
-    m.pose.orientation.x = 0.0;
-    m.pose.orientation.y = 0.0;
-    m.pose.orientation.z = 0.0;
-    m.pose.orientation.w = 1.0;
-    m.scale.x = 0.03;
-    m.scale.y = 0.03;
-    m.scale.z = 0.03;
-    m.color.r = 1.0;
-    m.color.g = 0.0;
-    m.color.b = 0.0;
-    m.color.a = 1.0;
-    m.id = points[0].id;
-    m.lifetime = rclcpp::Duration::from_seconds(0.1);
-    for (Point p : points) {
-      // if(p.id == -1)
-      //  continue;
-      geometry_msgs::msg::Point pt;
-      pt.x = p.x;
-      pt.y = p.y;
-      pt.z = 0.03;
-      m.points.push_back(pt);
-    }
-    points_pub_->publish(m);
-  }
+  // void publish_points(const std::vector<Point> &points) {
+  //   visualization_msgs::msg::Marker m;
+  //   m.header.frame_id = odom_frame_;
+  //   m.header.stamp = this->get_clock()->now();
+  //   m.ns = "dyn_points";
+  //   m.type = visualization_msgs::msg::Marker::POINTS;
+  //   m.action = visualization_msgs::msg::Marker::ADD;
+  //   m.pose.orientation.x = 0.0;
+  //   m.pose.orientation.y = 0.0;
+  //   m.pose.orientation.z = 0.0;
+  //   m.pose.orientation.w = 1.0;
+  //   m.scale.x = 0.03;
+  //   m.scale.y = 0.03;
+  //   m.scale.z = 0.03;
+  //   m.color.r = 1.0;
+  //   m.color.g = 0.0;
+  //   m.color.b = 0.0;
+  //   m.color.a = 1.0;
+  //   m.id = points[0].id;
+  //   m.lifetime = rclcpp::Duration::from_seconds(0.1);
+  //   for (Point p : points) {
+  //     // if(p.id == -1)
+  //     //  continue;
+  //     geometry_msgs::msg::Point pt;
+  //     pt.x = p.x;
+  //     pt.y = p.y;
+  //     pt.z = 0.03;
+  //     m.points.push_back(pt);
+  //   }
+  //   points_pub_->publish(m);
+  // }
 
 
 }; 
