@@ -14,6 +14,11 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <people_msgs/msg/people.hpp>
 #include <people_msgs/msg/person.hpp>
+
+#include <leg_detector_msgs/msg/leg.hpp>
+#include <leg_detector_msgs/msg/leg_array.hpp>
+#include <std_msgs/msg/header.hpp>
+
 #include "obstacle_kf.hpp"
 
 #include <cmath>  // isinf, sqrt
@@ -52,6 +57,7 @@ public:
       
 
         obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/static_markers", 10);
+        leg_pub_ = this->create_publisher<leg_detector_msgs::msg::LegArray>("detected_leg_clusters", 20);
         dyn_obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/dynamic_markers", 10);
         // points_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/dynamic_obstacles/points", 10);
         obstacles_pub_ = this->create_publisher<people_msgs::msg::People>("/people", 10);
@@ -116,6 +122,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obs_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr dyn_obs_pub_;
+    rclcpp::Publisher<leg_detector_msgs::msg::LegArray>::SharedPtr leg_pub_;
     // rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr points_pub_;
     rclcpp::Publisher<people_msgs::msg::People>::SharedPtr obstacles_pub_;
 
@@ -155,9 +162,10 @@ private:
         // Find obstacles candidates in the point set
         std::vector<Obstacle> obs = findObs(points, msg->header.stamp);
         // printf("found %i obstacles!\n", (int)obs.size());
-        publish_obs(obs, std::string("obstacles"), 2, 0.1);
+        publish_obs(obs, std::string("obstacles"), 2, 0.1, msg->header);
+
         // Track with the KFs
-        trackMovingObstaclesKF(obs);
+        // trackMovingObstaclesKF(obs);
       }
     }
 
@@ -477,9 +485,15 @@ private:
     }
   
     void publish_obs(const std::vector<Obstacle> &obs, std::string namespc,
-                   int color, double time) {
+                     int color, double time, std_msgs::msg::Header &header) {
       visualization_msgs::msg::MarkerArray ma;
       visualization_msgs::msg::Marker m;
+      leg_detector_msgs::msg::Leg leg;
+      leg_detector_msgs::msg::LegArray detected_leg_clusters;
+
+      detected_leg_clusters.header.frame_id = header.frame_id;
+      detected_leg_clusters.header.stamp = header.stamp;
+
       m.header.frame_id = odom_frame_;
       m.header.stamp = rclcpp::Time(0, 0, RCL_SYSTEM_TIME); 
       m.ns = namespc;
@@ -522,8 +536,14 @@ private:
         m.pose.position.y = o.center.y;
         m.pose.position.z = 0.3;
         ma.markers.push_back(m);
+
+        leg.position.x = o.center.x;
+        leg.position.y = o.center.y;
+        leg.confidence = 0.8;
+        detected_leg_clusters.legs.push_back(leg);
       }
     obs_pub_->publish(ma);
+    leg_pbu_->publish(detected_leg_clusters);
   }
 
   // void publish_points(const std::vector<Point> &points) {

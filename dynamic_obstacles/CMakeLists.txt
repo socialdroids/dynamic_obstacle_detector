@@ -11,6 +11,9 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(people_msgs REQUIRED)  
 find_package(visualization_msgs REQUIRED)
+find_package(leg_detector_msgs REQUIRED)  
+find_package(std_msgs REQUIRED)  
+
 ament_export_dependencies(
   rclcpp
   geometry_msgs
@@ -21,6 +24,8 @@ ament_export_dependencies(
   tf2
   people_msgs  
   visualization_msgs
+  leg_detector_msgs
+  std_msgs
 )
 
 include_directories(
@@ -43,6 +48,8 @@ ament_target_dependencies(${PROJECT_NAME}_node
   tf2
   people_msgs 
   visualization_msgs
+  leg_detector_msgs
+  std_msgs
 )
 
 install(TARGETS
