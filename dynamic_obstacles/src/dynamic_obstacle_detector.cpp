@@ -5,7 +5,7 @@
 #include <laser_geometry/laser_geometry.hpp>
 
 #include <tf2/transform_datatypes.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/create_timer_interface.h>
 #include <tf2_ros/create_timer_ros.h>
@@ -165,7 +165,7 @@ private:
         publish_obs(obs, std::string("obstacles"), 2, 0.1, msg->header);
 
         // Track with the KFs
-        // trackMovingObstaclesKF(obs);
+        trackMovingObstaclesKF(obs);
       }
     }
 
@@ -543,7 +543,7 @@ private:
         detected_leg_clusters.legs.push_back(leg);
       }
     obs_pub_->publish(ma);
-    leg_pbu_->publish(detected_leg_clusters);
+    leg_pub_->publish(detected_leg_clusters);
   }
 
   // void publish_points(const std::vector<Point> &points) {

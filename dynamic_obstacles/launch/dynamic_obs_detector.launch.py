@@ -70,9 +70,9 @@ def generate_launch_description():
                 {'thres_point_dist': 0.6},
                 {'thresh_min_points': 10},
                 {'thresh_max_points': 75},
-                {'min_vel_tracked': 0.37},
+                {'min_vel_tracked': 0.1},
                 {'max_vel_tracked': 1.8},
-                {'track_distance': 0.55},
+                {'track_distance': 0.3},
                 {'track_timeout': 0.8}
             ]
         ),
