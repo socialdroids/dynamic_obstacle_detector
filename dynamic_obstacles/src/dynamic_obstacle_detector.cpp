@@ -15,8 +15,8 @@
 #include <people_msgs/msg/people.hpp>
 #include <people_msgs/msg/person.hpp>
 
-#include <leg_detector_msgs/msg/leg.hpp>
-#include <leg_detector_msgs/msg/leg_array.hpp>
+// #include <leg_detector_msgs/msg/leg.hpp>
+// #include <leg_detector_msgs/msg/leg_array.hpp>
 #include <std_msgs/msg/header.hpp>
 
 #include "obstacle_kf.hpp"
@@ -39,6 +39,7 @@ public:
         this->declare_parameter("max_vel_tracked", 1.0);
         this->declare_parameter("track_distance", 5.0);
         this->declare_parameter("track_timeout", 5.0);
+        this->declare_parameter("dist_between_obstacles", 0.2);
 
         this->get_parameter("input_scan_topic", input_scan_topic_);
         this->get_parameter("odom_frame", odom_frame_);
@@ -50,6 +51,7 @@ public:
         this->get_parameter("max_vel_tracked", max_vel_tracked_);
         this->get_parameter("track_distance", track_distance_);
         this->get_parameter("track_timeout", track_timeout_);
+        this->get_parameter("dist_between_obstacles", dist_between_obstacles);
 
         scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
             input_scan_topic_, rclcpp::SensorDataQoS(),
@@ -57,7 +59,7 @@ public:
       
 
         obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/static_markers", 10);
-        leg_pub_ = this->create_publisher<leg_detector_msgs::msg::LegArray>("detected_leg_clusters", 20);
+        //leg_pub_ = this->create_publisher<leg_detector_msgs::msg::LegArray>("detected_leg_clusters", 20);
         dyn_obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/dynamic_markers", 10);
         // points_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/dynamic_obstacles/points", 10);
         obstacles_pub_ = this->create_publisher<people_msgs::msg::People>("/people", 10);
@@ -110,6 +112,7 @@ private:
 
     int scan_buffer_size_;
     float thres_point_dist_;
+    float dist_between_obstacles; 
     int thresh_min_points_;
     int thresh_max_points_;
     float min_vel_tracked_;
@@ -122,7 +125,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obs_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr dyn_obs_pub_;
-    rclcpp::Publisher<leg_detector_msgs::msg::LegArray>::SharedPtr leg_pub_;
+    //rclcpp::Publisher<leg_detector_msgs::msg::LegArray>::SharedPtr leg_pub_;
     // rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr points_pub_;
     rclcpp::Publisher<people_msgs::msg::People>::SharedPtr obstacles_pub_;
 
@@ -468,8 +471,29 @@ private:
           }
           o.center.x /= (float)o.points.size();
           o.center.y /= (float)o.points.size();
-          obs.push_back(o);
-  
+          // obs.push_back(o);
+          bool merged = false;
+          for (Obstacle &existing : obs) {
+            if (dist(o.center, existing.center) <= dist_between_obstacles) {
+                existing.points.insert(existing.points.end(),
+                                        o.points.begin(), o.points.end());
+
+                existing.center.x = 0;
+                existing.center.y = 0;
+                for (Point p : existing.points) {
+                    existing.center.x += p.x;
+                    existing.center.y += p.y;
+                }
+                existing.center.x /= (float)existing.points.size();
+                existing.center.y /= (float)existing.points.size();
+
+                merged = true;
+                break; 
+            }
+          }
+        if (!merged) {
+            obs.push_back(o);
+        }
         } else {
           // printf(" --> DISCARDED!\n");
         }
@@ -488,11 +512,11 @@ private:
                      int color, double time, std_msgs::msg::Header &header) {
       visualization_msgs::msg::MarkerArray ma;
       visualization_msgs::msg::Marker m;
-      leg_detector_msgs::msg::Leg leg;
-      leg_detector_msgs::msg::LegArray detected_leg_clusters;
+      //leg_detector_msgs::msg::Leg leg;
+      //leg_detector_msgs::msg::LegArray detected_leg_clusters;
 
-      detected_leg_clusters.header.frame_id = header.frame_id;
-      detected_leg_clusters.header.stamp = header.stamp;
+      // detected_leg_clusters.header.frame_id = header.frame_id;
+      // detected_leg_clusters.header.stamp = header.stamp;
 
       m.header.frame_id = odom_frame_;
       m.header.stamp = rclcpp::Time(0, 0, RCL_SYSTEM_TIME); 
@@ -537,13 +561,13 @@ private:
         m.pose.position.z = 0.3;
         ma.markers.push_back(m);
 
-        leg.position.x = o.center.x;
-        leg.position.y = o.center.y;
-        leg.confidence = 0.8;
-        detected_leg_clusters.legs.push_back(leg);
+        // leg.position.x = o.center.x;
+        // leg.position.y = o.center.y;
+        // leg.confidence = 0.8;
+        // detected_leg_clusters.legs.push_back(leg);
       }
     obs_pub_->publish(ma);
-    leg_pub_->publish(detected_leg_clusters);
+    //leg_pub_->publish(detected_leg_clusters);
   }
 
   // void publish_points(const std::vector<Point> &points) {

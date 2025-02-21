@@ -67,8 +67,8 @@ def generate_launch_description():
             parameters=[
                 {'input_scan_topic': 'base_scan_front_filtered'},
                 {'odom_frame': 'odom'},
-                {'thres_point_dist': 0.6},
-                {'thresh_min_points': 10},
+                {'thres_point_dist': 1.2},
+                {'thresh_min_points': 3},
                 {'thresh_max_points': 75},
                 {'min_vel_tracked': 0.1},
                 {'max_vel_tracked': 1.8},
