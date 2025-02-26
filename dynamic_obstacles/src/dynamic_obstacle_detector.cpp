@@ -174,6 +174,8 @@ private:
                   int neighbor_value = map_.data[neighbor_y * map_.info.width + neighbor_x];
 
                   if (neighbor_value == 100) {
+                      RCLCPP_INFO(this->get_logger(), "Point (%.2f, %.2f) is on obstacle", px, py);
+                      RCLCPP_INFO(this->get_logger(), "Point (%.2f, %.2f) neighbor_x", neighbor_x, neighbor_y);
                       return true;  
                   }
               }
@@ -181,7 +183,7 @@ private:
       }
   
       return false;
-  }
+    }
   
   
     void scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg){ 
@@ -191,7 +193,7 @@ private:
       geometry_msgs::msg::PointStamped ps;
       ps.header.frame_id = msg->header.frame_id;
       //ros::Time(0); --> msg->time
-      ps.header.stamp = msg->header.stamp;
+      ps.header.stamp =  rclcpp::Time(0);
       for (unsigned int i = 0; i < msg->ranges.size(); i++) {
         if (!isinf(msg->ranges[i]) && !isnan(msg->ranges[i])) {
           Point p;
@@ -533,7 +535,8 @@ private:
               }
               float mean_x = sum_x / (float)o.points.size();
               float mean_y = sum_y / (float)o.points.size();
-  
+              // Ignorando 30 cm de cada lado e ppegando a media de pontos
+              // bool valid = true;
               bool valid = !isPointOnObstacle(mean_x, mean_y, 0.3);
               if (valid) {
                   bool merged = false;
