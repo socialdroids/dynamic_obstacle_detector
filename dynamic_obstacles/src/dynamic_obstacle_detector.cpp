@@ -61,7 +61,7 @@ public:
             std::bind(&DynamicObstacleDetector::scanCallback, this, std::placeholders::_1));
 
         map_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-          "/map", rclcpp::QoS(10),
+          "/keepout_filter_mask", rclcpp::QoS(10),
           std::bind(&DynamicObstacleDetector::mapCallback, this, std::placeholders::_1));
 
         obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/static_markers", 10);
@@ -142,49 +142,63 @@ private:
     void mapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
       map_ = *msg; 
     }
-    bool isPointOnObstacle(const double &px, const double &py, double radius) {
-      if (map_.data.empty()) return false;
-  
-      double resolution = map_.info.resolution; 
-      double map_origin_x = map_.info.origin.position.x;  
-      double map_origin_y = map_.info.origin.position.y;  
-  
-      int map_x = (px - map_origin_x) / resolution;
-      int map_y = (py - map_origin_y) / resolution;
-  
-      if (map_x < 0 || map_x >= map_.info.width || map_y < 0 || map_y >= map_.info.height) {
-          return false;
-      }
-  
-      int map_value = map_.data[map_y * map_.info.width + map_x];
-  
-      if (map_value == 100) {
-          return true;
-      }
-  
-      int radius_in_cells = static_cast<int>(radius / resolution);  
-  
-      for (int dx = -radius_in_cells; dx <= radius_in_cells; ++dx) {
-          for (int dy = -radius_in_cells; dy <= radius_in_cells; ++dy) {
-              int neighbor_x = map_x + dx;
-              int neighbor_y = map_y + dy;
-  
-              if (neighbor_x >= 0 && neighbor_x < map_.info.width &&
-                  neighbor_y >= 0 && neighbor_y < map_.info.height) {
-                  int neighbor_value = map_.data[neighbor_y * map_.info.width + neighbor_x];
+  bool isPointOnObstacle(const double &px, const double &py, double radius) {
+    if (map_.data.empty()) return false;
 
-                  if (neighbor_value == 100) {
-                      RCLCPP_INFO(this->get_logger(), "Point (%.2f, %.2f) is on obstacle", px, py);
-                      RCLCPP_INFO(this->get_logger(), "Point (%.2f, %.2f) neighbor_x", neighbor_x, neighbor_y);
-                      return true;  
-                  }
-              }
-          }
-      }
-  
-      return false;
+    geometry_msgs::msg::PointStamped point_in, point_out;
+    point_in.header.frame_id = "odom";  
+    point_in.point.x = px;
+    point_in.point.y = py;
+    point_in.point.z = 0.0;
+
+    try {
+        buffer_->transform(point_in, point_out, "map", tf2::durationFromSec(0.1));
+    } catch (tf2::TransformException &ex) {
+        RCLCPP_WARN(this->get_logger(), "Falha ao transformar ponto para 'map': %s", ex.what());
+        return false;
     }
-  
+
+    double transformed_x = point_out.point.x;
+    double transformed_y = point_out.point.y;
+
+    double resolution = map_.info.resolution; 
+    double map_origin_x = map_.info.origin.position.x;  
+    double map_origin_y = map_.info.origin.position.y;  
+
+    int map_x = (transformed_x - map_origin_x) / resolution;
+    int map_y = (transformed_y - map_origin_y) / resolution;
+
+    if (map_x < 0 || map_x >= map_.info.width || map_y < 0 || map_y >= map_.info.height) {
+        return false;
+    }
+
+    int map_value = map_.data[map_y * map_.info.width + map_x];
+
+    if (map_value != 0) {
+        return true;
+    }
+
+    int radius_in_cells = static_cast<int>(radius / resolution);  
+
+    for (int dx = -radius_in_cells; dx <= radius_in_cells; ++dx) {
+        for (int dy = -radius_in_cells; dy <= radius_in_cells; ++dy) {
+            int neighbor_x = map_x + dx;
+            int neighbor_y = map_y + dy;
+
+            if (neighbor_x >= 0 && neighbor_x < map_.info.width &&
+                neighbor_y >= 0 && neighbor_y < map_.info.height) {
+                int neighbor_value = map_.data[neighbor_y * map_.info.width + neighbor_x];
+
+                if (neighbor_value != 0) {
+                    return true;  
+                }
+            }
+        }
+    }
+
+    return false;
+  }
+
   
     void scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg){ 
       std::vector<Point> points;
@@ -526,18 +540,9 @@ private:
               }
               o.center.x /= (float)o.points.size();
               o.center.y /= (float)o.points.size();
-  
-              float sum_x = 0;
-              float sum_y = 0;
-              for (const Point &p : o.points) {
-                  sum_x += p.x;
-                  sum_y += p.y;
-              }
-              float mean_x = sum_x / (float)o.points.size();
-              float mean_y = sum_y / (float)o.points.size();
               // Ignorando 30 cm de cada lado e ppegando a media de pontos
               // bool valid = true;
-              bool valid = !isPointOnObstacle(mean_x, mean_y, 0.3);
+              bool valid = !isPointOnObstacle(o.center.x, o.center.y, 0.3);
               if (valid) {
                   bool merged = false;
                   for (Obstacle &existing : obs) {
@@ -560,6 +565,7 @@ private:
                   }
   
                   if (!merged && valid) {
+                      RCLCPP_INFO(this->get_logger(), "Sem obs: %f %f", o.center.x, o.center.y); 
                       obs.push_back(o);
                   }
               }
