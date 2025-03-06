@@ -565,7 +565,7 @@ private:
                   }
   
                   if (!merged && valid) {
-                      RCLCPP_INFO(this->get_logger(), "Sem obs: %f %f", o.center.x, o.center.y); 
+                      // RCLCPP_INFO(this->get_logger(), "Sem obs: %f %f", o.center.x, o.center.y); 
                       obs.push_back(o);
                   }
               }
