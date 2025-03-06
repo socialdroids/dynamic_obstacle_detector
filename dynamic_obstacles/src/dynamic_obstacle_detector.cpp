@@ -19,6 +19,9 @@
 // #include <leg_detector_msgs/msg/leg_array.hpp>
 #include <std_msgs/msg/header.hpp>
 
+#include "nav_msgs/msg/occupancy_grid.hpp"
+
+
 #include "obstacle_kf.hpp"
 
 #include <cmath>  // isinf, sqrt
@@ -56,7 +59,10 @@ public:
         scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
             input_scan_topic_, rclcpp::SensorDataQoS(),
             std::bind(&DynamicObstacleDetector::scanCallback, this, std::placeholders::_1));
-      
+
+        map_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
+          "/keepout_filter_mask", rclcpp::QoS(10),
+          std::bind(&DynamicObstacleDetector::mapCallback, this, std::placeholders::_1));
 
         obs_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/dynamic_obstacles/static_markers", 10);
         //leg_pub_ = this->create_publisher<leg_detector_msgs::msg::LegArray>("detected_leg_clusters", 20);
@@ -107,7 +113,9 @@ private:
 
     std::vector<ObstacleKF> tracked_obstacles_;
     std::vector<std::vector<Obstacle>> obstacles_;
-
+    
+    nav_msgs::msg::OccupancyGrid map_;
+    
     laser_geometry::LaserProjection projector_;  
 
     int scan_buffer_size_;
@@ -123,12 +131,75 @@ private:
     int obstacle_count_;  
 
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
+    rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_sub_;
+
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obs_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr dyn_obs_pub_;
     //rclcpp::Publisher<leg_detector_msgs::msg::LegArray>::SharedPtr leg_pub_;
     // rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr points_pub_;
     rclcpp::Publisher<people_msgs::msg::People>::SharedPtr obstacles_pub_;
 
+    void mapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
+      map_ = *msg; 
+    }
+  bool isPointOnObstacle(const double &px, const double &py, double radius) {
+    if (map_.data.empty()) return false;
+
+    geometry_msgs::msg::PointStamped point_in, point_out;
+    point_in.header.frame_id = "odom";  
+    point_in.point.x = px;
+    point_in.point.y = py;
+    point_in.point.z = 0.0;
+
+    try {
+        buffer_->transform(point_in, point_out, "map", tf2::durationFromSec(0.1));
+    } catch (tf2::TransformException &ex) {
+        RCLCPP_WARN(this->get_logger(), "Falha ao transformar ponto para 'map': %s", ex.what());
+        return false;
+    }
+
+    double transformed_x = point_out.point.x;
+    double transformed_y = point_out.point.y;
+
+    double resolution = map_.info.resolution; 
+    double map_origin_x = map_.info.origin.position.x;  
+    double map_origin_y = map_.info.origin.position.y;  
+
+    int map_x = (transformed_x - map_origin_x) / resolution;
+    int map_y = (transformed_y - map_origin_y) / resolution;
+
+    if (map_x < 0 || map_x >= map_.info.width || map_y < 0 || map_y >= map_.info.height) {
+        return false;
+    }
+
+    int map_value = map_.data[map_y * map_.info.width + map_x];
+
+    if (map_value != 0) {
+        return true;
+    }
+
+    int radius_in_cells = static_cast<int>(radius / resolution);  
+
+    for (int dx = -radius_in_cells; dx <= radius_in_cells; ++dx) {
+        for (int dy = -radius_in_cells; dy <= radius_in_cells; ++dy) {
+            int neighbor_x = map_x + dx;
+            int neighbor_y = map_y + dy;
+
+            if (neighbor_x >= 0 && neighbor_x < map_.info.width &&
+                neighbor_y >= 0 && neighbor_y < map_.info.height) {
+                int neighbor_value = map_.data[neighbor_y * map_.info.width + neighbor_x];
+
+                if (neighbor_value != 0) {
+                    return true;  
+                }
+            }
+        }
+    }
+
+    return false;
+  }
+
+  
     void scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg){ 
       std::vector<Point> points;
       float angle_min = msg->angle_min;
@@ -136,7 +207,7 @@ private:
       geometry_msgs::msg::PointStamped ps;
       ps.header.frame_id = msg->header.frame_id;
       //ros::Time(0); --> msg->time
-      ps.header.stamp = msg->header.stamp;
+      ps.header.stamp =  rclcpp::Time(0);
       for (unsigned int i = 0; i < msg->ranges.size(); i++) {
         if (!isinf(msg->ranges[i]) && !isnan(msg->ranges[i])) {
           Point p;
@@ -441,68 +512,72 @@ private:
       std::vector<Obstacle> obs;
       unsigned int id = 1;
       unsigned int i = 0;
+  
       while (i < points.size() - 1) {
   
-        Obstacle o;
+          Obstacle o;
   
-        // Joint the points
-        o.points.push_back(points[i]);
-        while ((i + 1) < points.size() &&
-               dist(points[i], points[i + 1]) <= thres_point_dist_) {
-          o.points.push_back(points[i + 1]);
-          i++;
-        }
-        // printf("Found a candidate group of %i points.", (int)o.points.size());
+          o.points.push_back(points[i]);
+          while ((i + 1) < points.size() &&
+                 dist(points[i], points[i + 1]) <= thres_point_dist_) {
+              o.points.push_back(points[i + 1]);
+              i++;
+          }
   
-        // Create the obstacle if the conditions are fulfilled
-        if ((int)o.points.size() > thresh_min_points_ &&
-            (int)o.points.size() < thresh_max_points_) {
-          // printf("Found a candidate group of %i points.",
-          // (int)o.points.size()); printf(" --> ACCEPTED!\n"); Create obstacle
-          o.id = id;
-          o.t = t;
-          o.width = dist(o.points[0], o.points[o.points.size() - 1]);
-          o.center.id = id;
-          id++;
-          o.seen = 1;
-          for (Point p : o.points) {
-            o.center.x += p.x;
-            o.center.y += p.y;
+          if ((int)o.points.size() > thresh_min_points_ &&
+              (int)o.points.size() < thresh_max_points_) {
+  
+              o.id = id;
+              o.t = t;
+              o.width = dist(o.points[0], o.points[o.points.size() - 1]);
+              o.center.id = id;
+              id++;
+              o.seen = 1;
+  
+              for (Point p : o.points) {
+                  o.center.x += p.x;
+                  o.center.y += p.y;
+              }
+              o.center.x /= (float)o.points.size();
+              o.center.y /= (float)o.points.size();
+              // Ignorando 30 cm de cada lado e ppegando a media de pontos
+              // bool valid = true;
+              bool valid = !isPointOnObstacle(o.center.x, o.center.y, 0.3);
+              if (valid) {
+                  bool merged = false;
+                  for (Obstacle &existing : obs) {
+                      if (dist(o.center, existing.center) <= dist_between_obstacles) {
+                          existing.points.insert(existing.points.end(),
+                                                 o.points.begin(), o.points.end());
+  
+                          existing.center.x = 0;
+                          existing.center.y = 0;
+                          for (Point p : existing.points) {
+                              existing.center.x += p.x;
+                              existing.center.y += p.y;
+                          }
+                          existing.center.x /= (float)existing.points.size();
+                          existing.center.y /= (float)existing.points.size();
+  
+                          merged = true;
+                          break; 
+                      }
+                  }
+  
+                  if (!merged && valid) {
+                      RCLCPP_INFO(this->get_logger(), "Sem obs: %f %f", o.center.x, o.center.y); 
+                      obs.push_back(o);
+                  }
+              }
           }
-          o.center.x /= (float)o.points.size();
-          o.center.y /= (float)o.points.size();
-          // obs.push_back(o);
-          bool merged = false;
-          for (Obstacle &existing : obs) {
-            if (dist(o.center, existing.center) <= dist_between_obstacles) {
-                existing.points.insert(existing.points.end(),
-                                        o.points.begin(), o.points.end());
-
-                existing.center.x = 0;
-                existing.center.y = 0;
-                for (Point p : existing.points) {
-                    existing.center.x += p.x;
-                    existing.center.y += p.y;
-                }
-                existing.center.x /= (float)existing.points.size();
-                existing.center.y /= (float)existing.points.size();
-
-                merged = true;
-                break; 
-            }
-          }
-        if (!merged) {
-            obs.push_back(o);
-        }
-        } else {
-          // printf(" --> DISCARDED!\n");
-        }
-        i++;
-        // remove the point candidates
-        o.points.clear();
+  
+          o.points.clear();
+          i++; 
       }
+  
       return obs;
     }
+  
 
     float dist(const Point &p1, const Point &p2) {
       return std::hypotf((p1.x - p2.x), (p1.y - p2.y));
