@@ -43,6 +43,8 @@ public:
         this->declare_parameter("track_distance", 5.0);
         this->declare_parameter("track_timeout", 5.0);
         this->declare_parameter("dist_between_obstacles", 0.2);
+        this->declare_parameter("time_to_keep_obstacle", 3.0); 
+        this->declare_parameter("keep_obstacle", true);
 
         this->get_parameter("input_scan_topic", input_scan_topic_);
         this->get_parameter("odom_frame", odom_frame_);
@@ -55,7 +57,8 @@ public:
         this->get_parameter("track_distance", track_distance_);
         this->get_parameter("track_timeout", track_timeout_);
         this->get_parameter("dist_between_obstacles", dist_between_obstacles);
-
+        this->get_parameter("time_to_keep_obstacle", time_to_keep_obstacle_);
+        this->get_parameter("keep_obstacle", keep_obstacle_); 
         scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
             input_scan_topic_, rclcpp::SensorDataQoS(),
             std::bind(&DynamicObstacleDetector::scanCallback, this, std::placeholders::_1));
@@ -118,6 +121,7 @@ private:
     
     laser_geometry::LaserProjection projector_;  
 
+    bool keep_obstacle_; 
     int scan_buffer_size_;
     float thres_point_dist_;
     float dist_between_obstacles; 
@@ -125,6 +129,7 @@ private:
     int thresh_max_points_;
     float min_vel_tracked_;
     float max_vel_tracked_;
+    float time_to_keep_obstacle_; 
 
     float track_distance_;
     float track_timeout_;
@@ -323,10 +328,12 @@ private:
         if (now_seconds - tStamp_seconds < track_timeout_) { //&& linvel >= min_vel_tracked_
           temp.push_back(tracked_obstacles_[i]);
         }else{ 
-          double lost_seconds = (now_seconds - tStamp_seconds);
-          if (lost_seconds < 3.0) {
-            RCLCPP_ERROR(this->get_logger(),"Obj perdido: %d: %f", i, lost_seconds);
-            temp.push_back(tracked_obstacles_[i]);
+          if(keep_obstacle_){
+            double lost_seconds = (now_seconds - tStamp_seconds);
+            if (lost_seconds < time_to_keep_obstacle_) {
+              RCLCPP_ERROR(this->get_logger(),"Obj perdido: %d: %f", i, lost_seconds);
+              temp.push_back(tracked_obstacles_[i]);
+            }
           }
         }
       }
