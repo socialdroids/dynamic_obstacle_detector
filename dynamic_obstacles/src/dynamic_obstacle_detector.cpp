@@ -327,13 +327,8 @@ private:
 
         if (now_seconds - tStamp_seconds < track_timeout_) { //&& linvel >= min_vel_tracked_
           temp.push_back(tracked_obstacles_[i]);
-        }else{ 
-          if(keep_obstacle_){
-            double lost_seconds = (now_seconds - tStamp_seconds);
-            if (lost_seconds < time_to_keep_obstacle_) {
-              temp.push_back(tracked_obstacles_[i]);
-            }
-          }
+        }else if (keep_obstacle_ && (now_seconds - tStamp_seconds) < time_to_keep_obstacle_) {
+          temp.push_back(tracked_obstacles_[i]);
         }
       }
       tracked_obstacles_.clear();
