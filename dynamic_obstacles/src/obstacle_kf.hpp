@@ -20,11 +20,9 @@ struct ObstacleKF
 	std::string name;
 	
 	// Last time update
-	rclcpp::Time lostTime;
 	rclcpp::Time tStamp;
 	
 	// Updated flag
-	bool isLost; 
 	bool updated;
 
 	// number of detections

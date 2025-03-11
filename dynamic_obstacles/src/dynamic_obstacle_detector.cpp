@@ -288,7 +288,6 @@ private:
           // Update the filter
           tracked_obstacles_[i].update(obs[k].center.x, obs[k].center.y, posDev,
                                        this->get_clock()->now() );
-  
           // Mark the detection as used
           used[k] = true;
           // std::cout << "Done" << std::endl;
@@ -308,7 +307,6 @@ private:
           tracked_obstacles_.push_back(obstacle);
           // std::cout << "New obstacle added! size: " <<
           // tracked_obstacles_.size() << std::endl;
-  
           used[i] = true;
         }
       }
@@ -318,9 +316,6 @@ private:
 
       for (int i = 0; i < (int)tracked_obstacles_.size(); i++) {
   
-        // printf("obstacle %i, linvel: %.3f\n", i, linvel);
-        rclcpp::Time tStamp_fixed(tracked_obstacles_[i].tStamp, now_time.get_clock_type());
-
         auto now_time = this->get_clock()->now();
         double now_seconds = now_time.seconds();
         double tStamp_seconds = tracked_obstacles_[i].tStamp.seconds();
@@ -328,13 +323,7 @@ private:
         if (now_seconds - tStamp_seconds < track_timeout_) { //&& linvel >= min_vel_tracked_
           temp.push_back(tracked_obstacles_[i]);
         }else{ 
-          if (!tracked_obstacles_[i].isLost) {
-            tracked_obstacles_[i].lostTime = now_time;
-            tracked_obstacles_[i].isLost = true;
-          }
-          rclcpp::Time lostTime_fixed(tracked_obstacles_[i].lostTime, now_time.get_clock_type());
-
-          double lost_seconds = (now_time - tracked_obstacles_[i].lostTime).seconds();
+          double lost_seconds = (now_seconds - tStamp_seconds);
           if (lost_seconds < 3.0) {
             RCLCPP_ERROR(this->get_logger(),"Obj perdido: %d: %f", i, lost_seconds);
             temp.push_back(tracked_obstacles_[i]);
