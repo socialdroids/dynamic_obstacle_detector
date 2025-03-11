@@ -331,7 +331,6 @@ private:
           if(keep_obstacle_){
             double lost_seconds = (now_seconds - tStamp_seconds);
             if (lost_seconds < time_to_keep_obstacle_) {
-              RCLCPP_ERROR(this->get_logger(),"Obj perdido: %d: %f", i, lost_seconds);
               temp.push_back(tracked_obstacles_[i]);
             }
           }
