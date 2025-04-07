@@ -14,7 +14,9 @@ It detect groups of points in a laser scan that are then tracked using Kalman Fi
 - **max_vel_tracked**. Maximum velocity [m/s] of the obstacles to be considered as a dynamic obstacle. (Def: 2.0).
 - **max_tracked_distance**. Maximum distance [m] between obstacles to be considered the same one. (Def: 0.55).
 - **max_tracked_sec**. Maximum time [sec] between detections of an obstacle to be tracked. (Def: 1.0).
-
+- **dist_between_obstacles**: Maximum distance between two obstacles for them to be considered as a single one (used, for example, for legs — treats them as one obstacle instead of two).
+- **keep_obstacle**: Indicates whether an obstacle should be kept on the map for a certain time after it is no longer detected.
+- **time_to_keep_obstacle**: Duration (in seconds) to keep the obstacle on the map after it has been lost, if `keep_obstacle` is enabled.
 
 ## Subscriptions
 
